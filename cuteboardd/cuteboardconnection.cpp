@@ -40,12 +40,12 @@ void CuteboardConnection::close()
 void CuteboardConnection::setState(CuteboardConnection::ConnectionState newState)
 {
     D("Changing state from"<<this->state<<"to:"<<newState);
-    this->state = newState;
     if (newState==Connected) {
         this->watchdog.start(600000);
     } else if (newState!=Error) {
         this->watchdog.start();
     }
+    this->state = newState;
     // TODO: This
 }
 
@@ -93,6 +93,7 @@ void CuteboardConnection::handleChallengeResponse(QString response)
             D("User authenticated.");
             connect(this,&CuteboardConnection::clipboardData,dets,&UserState::clipboardData);
             connect(dets,&UserState::clipboardData,this,&CuteboardConnection::handleClipboardData);
+            write("Error: 0/0 OK");
             setState(Connected);
             return;
        }

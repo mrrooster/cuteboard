@@ -14,7 +14,7 @@ Cuteboard::Cuteboard(QObject *parent) :
     this->trayIcon.setContextMenu(&this->menu);
 
     // FIXME connect to server
-    this->client.connect("localhost",19780);
+    this->client.connect("tsunami.ohmyno.co.uk",19780,"me","mypassword");
 
     // Clipboard
     connect(this->clipboard,&QClipboard::dataChanged,this,&Cuteboard::handleClipboardContentsChanged);

@@ -1,5 +1,6 @@
 #include "cuteboarddclient.h"
 #include <QTcpSocket>
+#include <QCryptographicHash>
 
 #define DEBUG_CLIENT
 #ifdef DEBUG_CLIENT
@@ -16,7 +17,7 @@ CuteboarddClient::CuteboarddClient(QObject *parent) : QObject(parent),s(nullptr)
     this->pingTimer.setInterval(60000); // Ping the server every 60 seconds
 }
 
-void CuteboarddClient::connect(QString host, quint16 port)
+void CuteboarddClient::connect(QString host, quint16 port,QString user,QString password)
 {
     if (!this->s) {
         QTcpSocket *s;
@@ -37,12 +38,22 @@ void CuteboarddClient::write(QString data)
     }
 }
 
+QPair<QString, QString> CuteboarddClient::readLine()
+{
+    QString readLine = this->s->readLine().trimmed();
+    int idx = readLine.indexOf(":");
+    if (idx<0) {
+        return QPair<QString,QString>("",readLine);
+    }
+    D("Read:"<<readLine);
+    return QPair<QString,QString>(readLine.left(idx),readLine.mid(idx+1));
+}
+
 void CuteboarddClient::handleConnected()
 {
     write("CB 1.0");//Protocol version
-    write("User: me");// User FIX
-    write("ChallengeResponse: boobies"); // FIX
-    this->pingTimer.start();
+    write(QString("User: %1").arg(this->user));// User
+    //this->pingTimer.start();
 }
 
 void CuteboarddClient::handleError(QAbstractSocket::SocketError socketError)
@@ -57,5 +68,18 @@ void CuteboarddClient::handlePingTimeout()
 
 void CuteboarddClient::handleReadyRead()
 {
-    qDebug()<<"Server:"<<this->s->readAll();
+    QPair<QString,QString> line = readLine();
+    QString command = line.first;
+    QString value = line.second;
+
+    if (command=="Challenge") {
+        D("Got challenge: "<<value);
+        QByteArray dataToHash = QString("%1%2").arg(this->password).arg(value).toUtf8();
+
+        write(QString("ChallengeResponse: %1").arg(
+                  QString(QCryptographicHash::hash(dataToHash,QCryptographicHash::Sha256).toBase64())
+                  ));
+    } else if (command=="Pong") {
+        D("Pong!");
+    }
 }
