@@ -27,6 +27,9 @@ void CuteboarddClient::connect(QString host, quint16 port,QString user,QString p
         QObject::connect(this->s,QOverload<QAbstractSocket::SocketError>::of(&QAbstractSocket::error),this,&CuteboarddClient::handleError);
         QObject::connect(this->s,&QAbstractSocket::readyRead,this,&CuteboarddClient::handleReadyRead);
 
+        this->user = user;
+        this->password = password;
+
         s->connectToHost(host,port);
     }
 }
@@ -46,7 +49,7 @@ QPair<QString, QString> CuteboarddClient::readLine()
         return QPair<QString,QString>("",readLine);
     }
     D("Read:"<<readLine);
-    return QPair<QString,QString>(readLine.left(idx),readLine.mid(idx+1));
+    return QPair<QString,QString>(readLine.left(idx),readLine.mid(idx+2));
 }
 
 void CuteboarddClient::handleConnected()
