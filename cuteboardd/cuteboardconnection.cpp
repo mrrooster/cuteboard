@@ -3,7 +3,7 @@
 #define DEBUG_CONNECTION
 #ifdef DEBUG_CONNECTION
 #include <QDebug>
-#define D(a) qDebug() <<QString("[CuteboardConnection %1]").arg(this->connectionId.toString()) <<a
+#define D(a) qDebug() <<QString("[CuteboardConnection %1]").arg(this->connectionId.toString()).toUtf8().data() <<a
 #else
 #define D(a)
 #endif
@@ -74,7 +74,7 @@ void CuteboardConnection::handleLogin(QString user)
     if (this->userMap.contains(this->user)) {
         dets = this->userMap.value(user);
     } else {
-        dets = new UserState(this);
+        dets = new UserState();
         dets->challenge = this->challenge;
         this->userMap.insert(user,dets);
     }
@@ -125,7 +125,10 @@ void CuteboardConnection::handleWatchdogTimeout()
 
 void CuteboardConnection::handleReadyToRead()
 {
-    while(this->s->bytesAvailable()>0) {
+    if (!this->s->canReadLine()) {
+        return;
+    }
+    while(this->s->bytesAvailable()>0 && this->s->canReadLine()) {
         QPair<QString,QString> line = readLine();
         QString name = line.first;
         QString value = line.second;

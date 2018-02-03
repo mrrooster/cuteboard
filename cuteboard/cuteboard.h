@@ -6,6 +6,9 @@
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include "cuteboarddclient.h"
+#ifdef Q_OS_MACOS
+#include <QTimer>
+#endif
 
 class Cuteboard : public QObject
 {
@@ -26,6 +29,11 @@ private:
     QClipboard *clipboard;
     QVector<QMimeData*> history;
     CuteboarddClient client;
+#ifdef Q_OS_MACOS
+    QTimer checkForChangesTimer;
+    QString checkString;
+    void setCheckString();
+#endif
 
     void saveClipboard();
     void setupClipboardMenu();
@@ -34,6 +42,9 @@ private slots:
     void handleMenuQuit();
     void handleMenuSelected();
     void handleClipboardContentsChanged();
+#ifdef Q_OS_MACOS
+    void checkForChanges();
+#endif
 };
 
 #endif // CUTEBOARD_H

@@ -4,6 +4,15 @@
 #include <QDebug>
 #include <QPointer>
 
+#define DEBUG_CUTEBOARD
+#ifdef DEBUG_CUTEBOARD
+#include <QDebug>
+#define D(a) qDebug() <<"[Cuteboard]" <<a
+#else
+#define D(a)
+#endif
+
+
 Cuteboard::Cuteboard(QObject *parent) :
     QObject(parent),
     trayIcon(QIcon(":/trayicon.png")),
@@ -24,6 +33,12 @@ Cuteboard::Cuteboard(QObject *parent) :
     this->menu.addMenu(&this->clipboardMenu);
     this->menu.addSeparator();
     connect(this->menu.addAction("Quit"),&QAction::triggered,this,&Cuteboard::handleMenuQuit);
+
+#ifdef Q_OS_MACOS
+    connect(&this->checkForChangesTimer,&QTimer::timeout,this,&Cuteboard::checkForChanges);
+    this->checkForChangesTimer.setSingleShot(false);
+    this->checkForChangesTimer.start(2000);
+#endif
 }
 
 void Cuteboard::start()
@@ -36,14 +51,16 @@ void Cuteboard::saveClipboard()
 {
     QMimeData *data = new QMimeData();
     const QMimeData *clipboardData = this->clipboard->mimeData();
-
+#ifdef Q_OS_MACOS
+    setCheckString();
+#endif
     QStringList formats = clipboardData->formats();
-    qDebug()<<"Copying data to clipboard";
+    D("Copying data to clipboard");
     for(int idx=0;idx<formats.size();idx++) {
         QString format = formats.at(idx);
         data->setData(format,clipboardData->data(format));
     }
-    qDebug()<<"Storing object in history.";
+    D("Storing object in history.");
     this->history.append(data);
 
     this->clipboardMenu.clear(); // To ensure we don't have any stale pointers around.
@@ -51,7 +68,7 @@ void Cuteboard::saveClipboard()
         delete this->history.takeFirst();
     }
 
-    qDebug()<<"History has"<<this->history.size()<<"entries.";
+    D("History has"<<this->history.size()<<"entries.");
     setupClipboardMenu();
 }
 
@@ -86,4 +103,20 @@ void Cuteboard::handleMenuSelected()
 void Cuteboard::handleClipboardContentsChanged()
 {
     saveClipboard();
+    this->client.postClipboard(this->clipboard->mimeData());
 }
+#ifdef Q_OS_MACOS
+
+void Cuteboard::checkForChanges()
+{
+    if (this->checkString != QString(this->client.encodeMimeData(this->clipboard->mimeData()))) {
+        D("Contents changed!");
+        handleClipboardContentsChanged();
+    }
+}
+
+void Cuteboard::setCheckString()
+{
+    this->checkString = QString(this->client.encodeMimeData(this->clipboard->mimeData()));
+}
+#endif

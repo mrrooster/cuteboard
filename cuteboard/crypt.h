@@ -3,9 +3,6 @@
 
 #include <QObject>
 #include <QByteArray>
-extern "C" {
-#include "external/twofish/AES.H"
-}
 
 class Crypt : public QObject
 {
@@ -22,8 +19,8 @@ signals:
 public slots:
 
 private:
-    keyInstance    ki;			/* key information, including tables */
-    cipherInstance ci;			/* keeps mode (ECB, CBC) and IV */
+    void *ki;			/* key information, including tables */
+    void *ci;			/* keeps mode (ECB, CBC) and IV */
 };
 
 #endif // CRYPT_H

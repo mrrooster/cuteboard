@@ -19,11 +19,14 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += main.cpp \
     cuteboard.cpp \
-    cuteboarddclient.cpp
+    cuteboarddclient.cpp \
+    crypt.cpp \
+    external/twofish/TWOFISH2.C
 
 HEADERS += \
     cuteboard.h \
-    cuteboarddclient.h
+    cuteboarddclient.h \
+    crypt.h \
 
 RESOURCES += \
     resources/resources.qrc

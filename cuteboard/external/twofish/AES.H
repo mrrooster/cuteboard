@@ -1,3 +1,5 @@
+#ifndef __AES_H_INCLUDED
+#define __AES_H_INCLUDED
 /* aes.h */
 
 /* ---------- See examples at end of this file for typical usage -------- */
@@ -266,3 +268,4 @@ void main(void)
 	printf("Tests passed");
 	}
 #endif /* TEST_2FISH */
+#endif /* __AES_H_INCLUDED */

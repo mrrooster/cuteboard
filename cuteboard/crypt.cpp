@@ -1,22 +1,29 @@
 #include <QDebug>
 #include "crypt.h"
+extern "C" {
+#include "external/twofish/AES.H"
+}
 
 #define KEY_BITS 256
 
 Crypt::Crypt(QObject *parent) : QObject(parent)
 {
     qDebug() << "initialising crypto gubbins.";
-    if (!makeKey(&ki,DIR_ENCRYPT,KEY_BITS,0)) {
+
+    this->ki = (void*)new keyInstance();
+    this->ci = (void*)new cipherInstance();
+
+    if (!makeKey((keyInstance*)this->ki,DIR_ENCRYPT,KEY_BITS,0)) {
         qDebug() << "Initialising crypto gubbins failed.";
     }
-    cipherInit(&ci,MODE_ECB,NULL);
+    cipherInit((cipherInstance*)this->ci,MODE_ECB,NULL);
 }
 
 void Crypt::setKey(QByteArray key)
 {
     int keyBytes = KEY_BITS/8;
     char *data = key.data();
-    char *buff = (char*)ki.key32;
+    char *buff = (char*)((keyInstance*)this->ki)->key32;
     int x;
     for(x=0;x<keyBytes&&x<key.size();x++) {
         buff[x]=data[x];
@@ -25,7 +32,7 @@ void Crypt::setKey(QByteArray key)
         buff[x]=0;
     }
 //    qDebug() << "rekeying...";
-    reKey(&ki);
+    reKey((keyInstance*)this->ki);
 }
 
 QByteArray Crypt::encrypt(QByteArray input)
@@ -43,7 +50,7 @@ QByteArray Crypt::encrypt(QByteArray input)
         }
     }
     QByteArray output(plainText.size(),0);
-    blockEncrypt(&ci,&ki, (BYTE*)plainText.data(),plainText.length()*8,(BYTE*)output.data());
+    blockEncrypt((cipherInstance*)this->ci,(keyInstance*)this->ki, (BYTE*)plainText.data(),plainText.length()*8,(BYTE*)output.data());
     return output;
 }
 
@@ -55,7 +62,7 @@ QByteArray Crypt::decrypt(QByteArray input)
         return QByteArray();
     }
     QByteArray output(input.length(),0);
-    blockDecrypt(&ci,&ki,(BYTE*)input.data(),input.length()*8,(BYTE*)output.data());
+    blockDecrypt((cipherInstance*)this->ci,(keyInstance*)this->ki,(BYTE*)input.data(),input.length()*8,(BYTE*)output.data());
     return output;
 }
 
