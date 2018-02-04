@@ -31,6 +31,7 @@ private:
     QString user;
     QUuid connectionId;
     QUuid challenge;
+    QByteArray readBuffer;
     static QMap<QString,UserState*> userMap;
 
     void setState(ConnectionState newState);

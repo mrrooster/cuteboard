@@ -30,6 +30,7 @@ private:
     bool connected;
     QString error;
     Crypt crypto;
+    QByteArray readBuffer;
 
     void write(QString data);
     void processRemoteClipboard(QString data);

@@ -1,7 +1,9 @@
 #include "cuteboarddclient.h"
 #include <QTcpSocket>
 #include <QCryptographicHash>
+#include <QClipboard>
 #include <QImage>
+#include <QApplication>
 
 #define DEBUG_CLIENT
 #ifdef DEBUG_CLIENT
@@ -15,7 +17,7 @@ CuteboarddClient::CuteboarddClient(QObject *parent) : QObject(parent),s(nullptr)
 {
     QObject::connect(&this->pingTimer,&QTimer::timeout,this,&CuteboarddClient::handlePingTimeout);
     this->pingTimer.setSingleShot(false);
-    this->pingTimer.setInterval(60000); // Ping the server every 60 seconds
+    this->pingTimer.start(60000); // Ping the server every 60 seconds
 }
 
 void CuteboarddClient::connect(QString host, quint16 port,QString user,QString password)
@@ -45,9 +47,10 @@ void CuteboarddClient::postClipboard(const QMimeData *data)
         dataToSend.append(encodeMimeData(data));
 
         D("Sending clipboard.");
-        QByteArray encryptedData = this->crypto.encrypt(dataToSend).toBase64();
+        QByteArray encryptedData = this->crypto.encrypt(dataToSend);
         D("Encrpypted data size: "<<encryptedData.size());
-        write(QString("Clipboard: %1").arg(QString(encryptedData)));
+
+        write(QString("Clipboard: %1").arg(QString(encryptedData.toPercentEncoding())));
     }
 }
 
@@ -60,7 +63,8 @@ QByteArray CuteboarddClient::encodeMimeData(const QMimeData *data)
     if (image.isNull()) {
         for(int idx=0;idx<formats.size();idx++) {
             QString format = formats.at(idx);
-            dataToSend.append(QString("%1=%2\r\n")
+            dataToSend.append(QString("%1=%2"
+                                      "\n")
                               .arg(format)
                               .arg(QString(data->data(format).toBase64()))
                               );
@@ -82,13 +86,32 @@ void CuteboarddClient::write(QString data)
 
 void CuteboarddClient::processRemoteClipboard(QString data)
 {
-    QByteArray encryptedData = QByteArray::fromBase64(data.toUtf8());
+    D("Encoded data size:"<<data.size());
+    QByteArray encryptedData = QByteArray::fromPercentEncoding(data.toUtf8());
     D("Encrypted data size:"<<encryptedData.size());
     QByteArray decryptedData = this->crypto.decrypt(encryptedData);
+
+    D("DATA:"<<decryptedData.left(20));
 
     if (decryptedData.startsWith("CUTE")) {
         D("Sucesfully decrypted clipboard.");
         decryptedData = decryptedData.mid(4);
+        QList<QByteArray> clipboardData = decryptedData.split('\n');
+        QMimeData *newData = new QMimeData();
+        for(int idx=0;idx<clipboardData.size();idx++) {
+            QList<QByteArray> lineData = clipboardData.at(idx).split('=');
+            if (lineData.size()==2) {
+                QString name = QString(lineData.at(0));
+                QByteArray value = QByteArray::fromBase64(lineData.at(1));
+                if (name=="application/x-qt-image=") {
+                    newData->setImageData(QVariant(value));
+                } else {
+                    newData->setData(name,value);
+                }
+            }
+        }
+        //this->receivedClipboards.append(newData);
+        //QApplication::clipboard()->setMimeData(newData);
     } else {
         D("Decryption failed");
     }
@@ -96,8 +119,11 @@ void CuteboarddClient::processRemoteClipboard(QString data)
 
 QPair<QString, QString> CuteboarddClient::readLine()
 {
-    QString readLine = this->s->readLine().trimmed();
-    int idx = readLine.indexOf(":");
+    int idx = this->readBuffer.indexOf("\r\n");
+    QString readLine = QString(this->readBuffer.left(idx));
+    this->readBuffer = this->readBuffer.mid(idx+2);
+
+    idx = readLine.indexOf(":");
     if (idx<0) {
         return QPair<QString,QString>("",readLine);
     }
@@ -120,39 +146,43 @@ void CuteboarddClient::handleError(QAbstractSocket::SocketError socketError)
 
 void CuteboarddClient::handlePingTimeout()
 {
+    D("Sending ping...");
     write("Ping: ");
 }
 
 void CuteboarddClient::handleReadyRead()
 {
-    if (!this->s->canReadLine()) {
-        return;
-    }
-    QPair<QString,QString> line = readLine();
-    QString command = line.first;
-    QString value = line.second;
+    D("In read: readbuffer size:"<<this->readBuffer.size());
+    this->readBuffer.append(this->s->readAll());
+    D("In read: readbuffer size:"<<this->readBuffer.size());
 
-    if (command=="Challenge") {
-        D("Got challenge: "<<value);
-        QByteArray dataToHash = QString("%1%2").arg(this->password).arg(value).toUtf8();
+    if (this->readBuffer.contains("\r\n")) {
+        QPair<QString,QString> line = readLine();
+        QString command = line.first;
+        QString value = line.second;
 
-        write(QString("ChallengeResponse: %1").arg(
-                  QString(QCryptographicHash::hash(dataToHash,QCryptographicHash::Sha256).toBase64())
-                  ));
-    } else if (command=="Clipboard") {
-        D("Got remote clipboard:"<<value);
-        processRemoteClipboard(value);
-    } else if (command=="Pong") {
-        D("Pong!");
-    } else if (command=="Error") {
-        if (value=="0/0 OK") {
-            D("Connected.");
-            this->connected = true;
-            this->crypto.setKey(this->password.toUtf8());
-            this->password="";
-        } else {
-            this->connected = false;
-            this->error = value;
+        if (command=="Challenge") {
+            D("Got challenge: "<<value);
+            QByteArray dataToHash = QString("%1%2").arg(this->password).arg(value).toUtf8();
+
+            write(QString("ChallengeResponse: %1").arg(
+                      QString(QCryptographicHash::hash(dataToHash,QCryptographicHash::Sha256).toBase64())
+                      ));
+        } else if (command=="Clipboard") {
+            D("Got remote clipboard:"<<value);
+            processRemoteClipboard(value);
+        } else if (command=="Pong") {
+            D("Pong!");
+        } else if (command=="Error") {
+            if (value=="0/0 OK") {
+                D("Connected.");
+                this->connected = true;
+                this->crypto.setKey(this->password.toUtf8());
+                this->password="";
+            } else {
+                this->connected = false;
+                this->error = value;
+            }
         }
     }
 }

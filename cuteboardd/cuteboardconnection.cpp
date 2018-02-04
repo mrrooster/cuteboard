@@ -108,8 +108,11 @@ void CuteboardConnection::handleClipboardCommand(QString data)
 
 QPair<QString, QString> CuteboardConnection::readLine()
 {
-    QString readLine = this->s->readLine().trimmed();
-    int idx = readLine.indexOf(":");
+    int idx = this->readBuffer.indexOf("\r\n");
+    QString readLine = QString(this->readBuffer.left(idx));
+    this->readBuffer = this->readBuffer.mid(idx+2);
+
+    idx = readLine.indexOf(":");
     if (idx<0) {
         return QPair<QString,QString>("",readLine);
     }
@@ -125,10 +128,9 @@ void CuteboardConnection::handleWatchdogTimeout()
 
 void CuteboardConnection::handleReadyToRead()
 {
-    if (!this->s->canReadLine()) {
-        return;
-    }
-    while(this->s->bytesAvailable()>0 && this->s->canReadLine()) {
+    this->readBuffer.append(this->s->readAll());
+
+    if (this->readBuffer.contains("\r\n")) {
         QPair<QString,QString> line = readLine();
         QString name = line.first;
         QString value = line.second;
