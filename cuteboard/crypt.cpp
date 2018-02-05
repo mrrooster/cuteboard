@@ -19,7 +19,7 @@ extern "C" {
 
 Crypt::Crypt(QObject *parent) : QObject(parent)
 {
-    D("initialising crypto gubbins.");
+    D("initialising crypto gubbins."<<sizeof(DWORD));
 
     this->ki = (void*)new keyInstance();
     this->ci = (void*)new cipherInstance();

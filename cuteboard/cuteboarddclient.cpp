@@ -77,6 +77,12 @@ QByteArray CuteboarddClient::encodeMimeData(const QMimeData *data)
     return dataToSend;
 }
 
+QMimeData *CuteboarddClient::getNextRemoteClipboard()
+{
+    D("In get remote cb, "<<this->incomingClipboards.size()<<"entries");
+    return this->incomingClipboards.takeFirst();
+}
+
 void CuteboarddClient::write(QString data)
 {
     if(this->s) {
@@ -99,17 +105,21 @@ void CuteboarddClient::processRemoteClipboard(QString data)
         QList<QByteArray> clipboardData = decryptedData.split('\n');
         QMimeData *newData = new QMimeData();
         for(int idx=0;idx<clipboardData.size();idx++) {
-            QList<QByteArray> lineData = clipboardData.at(idx).split('=');
-            if (lineData.size()==2) {
-                QString name = QString(lineData.at(0));
-                QByteArray value = QByteArray::fromBase64(lineData.at(1));
+            QByteArray line = clipboardData.at(idx);
+            if (line.indexOf('=')>-1) {
+                int pos = line.indexOf('=');
+                QString name = QString(line.left(pos));
+                QByteArray value = QByteArray::fromBase64(line.mid(pos+1));
                 if (name=="application/x-qt-image=") {
                     newData->setImageData(QVariant(value));
                 } else {
+                    D("Data: "<<name<<"="<<value.left(10));
                     newData->setData(name,value);
                 }
             }
         }
+        this->incomingClipboards.append(newData);
+        emit hasRemoteClipboard();
         //this->receivedClipboards.append(newData);
         //QApplication::clipboard()->setMimeData(newData);
     } else {

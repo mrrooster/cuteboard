@@ -79,7 +79,7 @@ INCLUDE IMPLEMENTATION SPECIFIC INFORMATION.
 */
 
 typedef unsigned char BYTE;
-typedef	unsigned long DWORD;		/* 32-bit unsigned quantity */
+typedef	unsigned int DWORD;		/* 32-bit unsigned quantity */
 typedef DWORD fullSbox[4][256];
 
 /* The structure for key information */

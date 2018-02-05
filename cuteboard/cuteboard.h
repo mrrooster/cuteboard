@@ -29,6 +29,7 @@ private:
     QClipboard *clipboard;
     QVector<QMimeData*> history;
     CuteboarddClient client;
+    bool ignoreChanges;
 #ifdef Q_OS_MACOS
     QTimer checkForChangesTimer;
     QString checkString;
@@ -42,6 +43,7 @@ private slots:
     void handleMenuQuit();
     void handleMenuSelected();
     void handleClipboardContentsChanged();
+    void handleRemoteClipboard();
 #ifdef Q_OS_MACOS
     void checkForChanges();
 #endif

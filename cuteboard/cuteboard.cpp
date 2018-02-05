@@ -16,12 +16,14 @@
 Cuteboard::Cuteboard(QObject *parent) :
     QObject(parent),
     trayIcon(QIcon(":/trayicon.png")),
-    historyMaxItems(40)
+    historyMaxItems(40),
+    ignoreChanges(false)
 {
     this->clipboard = QApplication::clipboard();
 
     this->trayIcon.setContextMenu(&this->menu);
 
+    connect(&this->client,&CuteboarddClient::hasRemoteClipboard,this,&Cuteboard::handleRemoteClipboard);
     // FIXME connect to server
     this->client.connect("tsunami.ohmyno.co.uk",19780,"me","mypassword");
 
@@ -102,8 +104,24 @@ void Cuteboard::handleMenuSelected()
 
 void Cuteboard::handleClipboardContentsChanged()
 {
+    if (this->ignoreChanges) {
+        return;
+    }
     saveClipboard();
     this->client.postClipboard(this->clipboard->mimeData());
+}
+
+void Cuteboard::handleRemoteClipboard()
+{
+    D("In handle remote clipboard.");
+    this->ignoreChanges = true;
+    this->clipboard->setMimeData(this->client.getNextRemoteClipboard());
+#ifdef Q_OS_MACOS
+    setCheckString();
+#endif
+    QApplication::processEvents();
+    this->ignoreChanges = false;
+    D("Leaving handle remote clipboard.");
 }
 #ifdef Q_OS_MACOS
 

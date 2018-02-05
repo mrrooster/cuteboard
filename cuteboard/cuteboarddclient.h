@@ -16,7 +16,9 @@ public:
     void connect(QString host, quint16 port, QString user, QString password);
     void postClipboard(const QMimeData *data);
     QByteArray encodeMimeData(const QMimeData *data);
+    QMimeData *getNextRemoteClipboard();
 signals:
+    void hasRemoteClipboard();
 
 public slots:
 
@@ -31,6 +33,7 @@ private:
     QString error;
     Crypt crypto;
     QByteArray readBuffer;
+    QVector<QMimeData*> incomingClipboards;
 
     void write(QString data);
     void processRemoteClipboard(QString data);
