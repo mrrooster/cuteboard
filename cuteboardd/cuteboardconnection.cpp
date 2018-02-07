@@ -130,7 +130,7 @@ void CuteboardConnection::handleReadyToRead()
 {
     this->readBuffer.append(this->s->readAll());
 
-    if (this->readBuffer.contains("\r\n")) {
+    while (this->readBuffer.contains("\r\n")) {
         QPair<QString,QString> line = readLine();
         QString name = line.first;
         QString value = line.second;
