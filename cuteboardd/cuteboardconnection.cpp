@@ -14,7 +14,9 @@ CuteboardConnection::CuteboardConnection(QTcpSocket *socket, QObject *parent) :
     QObject(parent),
     state(New),
     challenge(QUuid::createUuid()),
-    connectionId(QUuid::createUuid())
+    connectionId(QUuid::createUuid()),
+    user(""),
+    client("")
 {
     D("Got incoming connection.");
     this->s = socket;
@@ -61,11 +63,9 @@ void CuteboardConnection::write(QString message)
     this->s->write(QString("%1\r\n").arg(message).toUtf8());
 }
 
-void CuteboardConnection::handleLogin(QString user)
+void CuteboardConnection::handleLogin()
 {
-    this->user = user;
-    if (this->user.isEmpty()) {
-        setError("Username needed.");
+    if (this->user.isEmpty() || this->client.isEmpty()) {
         return;
     }
     setState(AuthChallenge);
@@ -142,9 +142,20 @@ void CuteboardConnection::handleReadyToRead()
             break;
         case PreAuth:
             if (name=="User") {
-                handleLogin(value);
+                if (value.isEmpty()) {
+                    setError("Username needed");
+                }
+                this->user = value;
+                handleLogin();
+            } else if (name=="Client") {
+                if (value.isEmpty()) {
+                    setError("Client info needed");
+                }
+                this->client = value;
+                D("Client: "<<this->client);
+                handleLogin();
             } else {
-                setError("Ident expected");
+                setError("User and client expected");
             }
             break;
         case AuthChallenge:

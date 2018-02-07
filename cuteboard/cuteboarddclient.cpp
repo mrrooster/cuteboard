@@ -33,11 +33,9 @@ void CuteboarddClient::connect(QString host, quint16 port,QString user,QString p
         QObject::connect(this->s,&QAbstractSocket::disconnected,this,&CuteboarddClient::handleDisconnected);
         QObject::connect(this->s,&QAbstractSocket::connected,this,&CuteboarddClient::handleConnected);
         QObject::connect(this->s,&QAbstractSocket::readyRead,this,&CuteboarddClient::handleReadyRead);
-
-        this->user = user;
-        this->password = password;
-
     }
+    this->user = user;
+    this->password = password;
     s->connectToHost(host,port);
 }
 
@@ -98,7 +96,7 @@ void CuteboarddClient::close()
 
 void CuteboarddClient::write(QString data)
 {
-    D("Write:"<<data);
+//    D("Write:"<<data);
     if(this->s) {
         this->s->write(QString("%1\r\n").arg(data).toUtf8());
     }
@@ -203,7 +201,7 @@ void CuteboarddClient::handleReadyRead()
         QPair<QString,QString> line = readLine();
         QString command = line.first;
         QString value = line.second;
-        D("Got command: "<<command);
+//        D("Got command: "<<command);
 
         if (command=="Challenge") {
             D("Got challenge: "<<value);

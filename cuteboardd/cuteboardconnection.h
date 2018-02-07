@@ -29,6 +29,7 @@ private:
     QTimer watchdog;
     ConnectionState state;
     QString user;
+    QString client;
     QUuid connectionId;
     QUuid challenge;
     QByteArray readBuffer;
@@ -37,7 +38,7 @@ private:
     void setState(ConnectionState newState);
     void setError(QString message);
     void write(QString message);
-    void handleLogin(QString user);
+    void handleLogin();
     void handleChallengeResponse(QString response);
     void handleClipboardCommand(QString data);
     QPair<QString,QString> readLine();
