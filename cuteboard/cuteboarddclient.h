@@ -17,9 +17,10 @@ public:
     void postClipboard(const QMimeData *data);
     QByteArray encodeMimeData(const QMimeData *data);
     QMimeData *getNextRemoteClipboard();
+    void close();
 signals:
     void hasRemoteClipboard();
-
+    void disconnected();
 public slots:
 
 private:
@@ -40,6 +41,7 @@ private:
     QPair<QString,QString> readLine();
 private slots:
     void handleConnected();
+    void handleDisconnected();
     void handleError(QAbstractSocket::SocketError socketError);
     void handlePingTimeout();
     void handleReadyRead();

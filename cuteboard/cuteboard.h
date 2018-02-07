@@ -6,6 +6,7 @@
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include "cuteboarddclient.h"
+#include "settingsdialog.h"
 #ifdef Q_OS_MACOS
 #include <QTimer>
 #endif
@@ -30,6 +31,7 @@ private:
     QVector<QMimeData*> history;
     CuteboarddClient client;
     bool ignoreChanges;
+    SettingsDialog settings;
 #ifdef Q_OS_MACOS
     QTimer checkForChangesTimer;
     QString checkString;
@@ -38,8 +40,10 @@ private:
 
     void saveClipboard();
     void setupClipboardMenu();
+    QMimeData *cloneMimeData(const QMimeData *src);
 
 private slots:
+    void handleSettingsChanged();
     void handleMenuQuit();
     void handleMenuSelected();
     void handleClipboardContentsChanged();

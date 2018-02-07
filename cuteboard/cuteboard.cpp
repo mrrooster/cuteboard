@@ -1,8 +1,10 @@
 #include "cuteboard.h"
 #include <QApplication>
 #include <QMimeData>
+#include <QPixmap>
 #include <QDebug>
 #include <QPointer>
+#include <QSettings>
 
 #define DEBUG_CUTEBOARD
 #ifdef DEBUG_CUTEBOARD
@@ -25,7 +27,8 @@ Cuteboard::Cuteboard(QObject *parent) :
 
     connect(&this->client,&CuteboarddClient::hasRemoteClipboard,this,&Cuteboard::handleRemoteClipboard);
     // FIXME connect to server
-    this->client.connect("tsunami.ohmyno.co.uk",19780,"me","mypassword");
+    //this->client.connect("tsunami.ohmyno.co.uk",19780,"me","mypassword");
+    connect(&this->settings,&SettingsDialog::settingsChanged,this,&Cuteboard::handleSettingsChanged);
 
     // Clipboard
     connect(this->clipboard,&QClipboard::dataChanged,this,&Cuteboard::handleClipboardContentsChanged);
@@ -34,6 +37,7 @@ Cuteboard::Cuteboard(QObject *parent) :
     this->clipboardMenu.menuAction()->setText("Clipboard items");
     this->menu.addMenu(&this->clipboardMenu);
     this->menu.addSeparator();
+    connect(this->menu.addAction("Settings"),&QAction::triggered,&this->settings,&SettingsDialog::open);
     connect(this->menu.addAction("Quit"),&QAction::triggered,this,&Cuteboard::handleMenuQuit);
 
 #ifdef Q_OS_MACOS
@@ -41,6 +45,8 @@ Cuteboard::Cuteboard(QObject *parent) :
     this->checkForChangesTimer.setSingleShot(false);
     this->checkForChangesTimer.start(2000);
 #endif
+
+    handleSettingsChanged();
 }
 
 void Cuteboard::start()
@@ -51,18 +57,11 @@ void Cuteboard::start()
 
 void Cuteboard::saveClipboard()
 {
-    QMimeData *data = new QMimeData();
-    const QMimeData *clipboardData = this->clipboard->mimeData();
+    D("In saveClipboard");
+    QMimeData *data = cloneMimeData(this->clipboard->mimeData());
 #ifdef Q_OS_MACOS
     setCheckString();
 #endif
-    QStringList formats = clipboardData->formats();
-    D("Copying data to clipboard");
-    for(int idx=0;idx<formats.size();idx++) {
-        QString format = formats.at(idx);
-        data->setData(format,clipboardData->data(format));
-    }
-    D("Storing object in history.");
     this->history.append(data);
 
     this->clipboardMenu.clear(); // To ensure we don't have any stale pointers around.
@@ -79,11 +78,55 @@ void Cuteboard::setupClipboardMenu()
     this->clipboardMenu.clear();
     for(int idx=0;idx<this->history.size();idx++) {
         QMimeData *data = this->history.at(idx);
-        QString dataEntry = data->text().remove('\n').left(30);
+        QAction *menuAct = this->clipboardMenu.addAction("");
+        //Shall we draw a picture?
+        if (data->hasImage()) {
+            QImage image = qvariant_cast<QImage>(data->imageData());
 
-        QAction *menuAct = this->clipboardMenu.addAction(dataEntry);
+            menuAct->setText(QString("[Image: %1x%2 %3bpp]")
+                             .arg(image.width())
+                             .arg(image.height())
+                             .arg(image.depth())
+                             );
+            menuAct->setIcon(QIcon(QPixmap::fromImage(image.scaledToWidth(256))));
+        } else {
+            menuAct->setText(data->text().remove('\n').left(30));
+        }
+
         menuAct->setData(QVariant::fromValue(QPointer<QMimeData>(data)));
         connect(menuAct,&QAction::triggered,this,&Cuteboard::handleMenuSelected);
+    }
+}
+
+QMimeData *Cuteboard::cloneMimeData(const QMimeData *src)
+{
+    D("Cloning mime data:"<<src<<", has:"<<src->formats().size()<<"items.");
+    QMimeData *data = new QMimeData();
+    QStringList formats = src->formats();
+    for(int idx=0;idx<formats.size();idx++) {
+        QString format = formats.at(idx);
+        if (format=="application/x-qt-image") {
+            data->setImageData(src->imageData());
+        } else {
+            data->setData(format,src->data(format));
+        }
+    }
+    return data;
+}
+
+void Cuteboard::handleSettingsChanged()
+{
+    QSettings settings;
+    this->client.close();
+    if (!(settings.value("localOnly",QVariant(true)).toBool())) {
+        QString host = settings.value("host",QVariant("")).toString();
+        ushort port = 19780;
+        D("Connecting to server: "<<host<<port);
+        this->client.connect(host,
+                             port,
+                             settings.value("user",QVariant("")).toString(),
+                             settings.value("pass",QVariant("")).toString()
+                             );
     }
 }
 
@@ -98,16 +141,17 @@ void Cuteboard::handleMenuSelected()
     QPointer<QMimeData> data = act->data().value<QPointer<QMimeData>>();
 
     if (data) {
-        this->trayIcon.showMessage("Cuteboard",data->text());
+        //this->trayIcon.showMessage("Cuteboard",data->text());
+        this->clipboard->setMimeData(cloneMimeData(data));
     }
 }
 
 void Cuteboard::handleClipboardContentsChanged()
 {
+    saveClipboard();
     if (this->ignoreChanges) {
         return;
     }
-    saveClipboard();
     this->client.postClipboard(this->clipboard->mimeData());
 }
 

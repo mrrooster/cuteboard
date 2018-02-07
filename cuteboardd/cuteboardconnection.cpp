@@ -116,7 +116,7 @@ QPair<QString, QString> CuteboardConnection::readLine()
     if (idx<0) {
         return QPair<QString,QString>("",readLine);
     }
-    D("Read:"<<readLine);
+//    D("Read:"<<readLine);
     return QPair<QString,QString>(readLine.left(idx),readLine.mid(idx+2));
 }
 

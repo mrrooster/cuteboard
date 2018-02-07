@@ -13,11 +13,10 @@
 #define D(a)
 #endif
 
-CuteboarddClient::CuteboarddClient(QObject *parent) : QObject(parent),s(nullptr)
+CuteboarddClient::CuteboarddClient(QObject *parent) : QObject(parent),s(nullptr),connected(false)
 {
     QObject::connect(&this->pingTimer,&QTimer::timeout,this,&CuteboarddClient::handlePingTimeout);
     this->pingTimer.setSingleShot(false);
-    this->pingTimer.start(60000); // Ping the server every 60 seconds
 }
 
 void CuteboarddClient::connect(QString host, quint16 port,QString user,QString password)
@@ -26,8 +25,9 @@ void CuteboarddClient::connect(QString host, quint16 port,QString user,QString p
         QTcpSocket *s;
         this->s = s = new QTcpSocket(this);
 
-        QObject::connect(this->s,&QAbstractSocket::connected,this,&CuteboarddClient::handleConnected);
         QObject::connect(this->s,QOverload<QAbstractSocket::SocketError>::of(&QAbstractSocket::error),this,&CuteboarddClient::handleError);
+        QObject::connect(this->s,&QAbstractSocket::disconnected,this,&CuteboarddClient::handleDisconnected);
+        QObject::connect(this->s,&QAbstractSocket::connected,this,&CuteboarddClient::handleConnected);
         QObject::connect(this->s,&QAbstractSocket::readyRead,this,&CuteboarddClient::handleReadyRead);
 
         this->user = user;
@@ -50,7 +50,7 @@ void CuteboarddClient::postClipboard(const QMimeData *data)
         QByteArray encryptedData = this->crypto.encrypt(dataToSend);
         D("Encrpypted data size: "<<encryptedData.size());
 
-        write(QString("Clipboard: %1").arg(QString(encryptedData.toPercentEncoding())));
+        write(QString("Clipboard: %1").arg(QString(encryptedData.toBase64())));
     }
 }
 
@@ -83,6 +83,15 @@ QMimeData *CuteboarddClient::getNextRemoteClipboard()
     return this->incomingClipboards.takeFirst();
 }
 
+void CuteboarddClient::close()
+{
+    if (this->connected) {
+        D("Closing connection.");
+        this->s->close();
+        this->connected = false;
+    }
+}
+
 void CuteboarddClient::write(QString data)
 {
     if(this->s) {
@@ -92,12 +101,12 @@ void CuteboarddClient::write(QString data)
 
 void CuteboarddClient::processRemoteClipboard(QString data)
 {
-    D("Encoded data size:"<<data.size());
-    QByteArray encryptedData = QByteArray::fromPercentEncoding(data.toUtf8());
-    D("Encrypted data size:"<<encryptedData.size());
+//    D("Encoded data size:"<<data.size());
+    QByteArray encryptedData = QByteArray::fromBase64(data.toUtf8());
+//    D("Encrypted data size:"<<encryptedData.size());
     QByteArray decryptedData = this->crypto.decrypt(encryptedData);
 
-    D("DATA:"<<decryptedData.left(20));
+//    D("DATA:"<<decryptedData.left(20));
 
     if (decryptedData.startsWith("CUTE")) {
         D("Sucesfully decrypted clipboard.");
@@ -113,7 +122,7 @@ void CuteboarddClient::processRemoteClipboard(QString data)
                 if (name=="application/x-qt-image=") {
                     newData->setImageData(QVariant(value));
                 } else {
-                    D("Data: "<<name<<"="<<value.left(10));
+//                    D("Data: "<<name<<"="<<value.left(10));
                     newData->setData(name,value);
                 }
             }
@@ -137,34 +146,49 @@ QPair<QString, QString> CuteboarddClient::readLine()
     if (idx<0) {
         return QPair<QString,QString>("",readLine);
     }
-    D("Read:"<<readLine);
+//    D("Read:"<<readLine);
     return QPair<QString,QString>(readLine.left(idx),readLine.mid(idx+2));
 }
 
 void CuteboarddClient::handleConnected()
 {
+    D("In handleConnected, sending procol strings...");
     write("CB 1.0");//Protocol version
     write(QString("User: %1").arg(this->user));// User
     //this->pingTimer.start();
+}
+
+void CuteboarddClient::handleDisconnected()
+{
+    D("Disconnected.");
+    this->connected = false;
+    this->s->deleteLater();
+    this->s = nullptr;
+    emit disconnected();
 }
 
 void CuteboarddClient::handleError(QAbstractSocket::SocketError socketError)
 {
     D("An error occured:"<<this->s->errorString());
     this->connected = false;
+    emit disconnected();
 }
 
 void CuteboarddClient::handlePingTimeout()
 {
-    D("Sending ping...");
-    write("Ping: ");
+    if (!this->connected) {
+        this->pingTimer.stop();
+    } else {
+        D("Sending ping...");
+        write("Ping: ");
+    }
 }
 
 void CuteboarddClient::handleReadyRead()
 {
-    D("In read: readbuffer size:"<<this->readBuffer.size());
+//    D("In read: readbuffer size:"<<this->readBuffer.size());
     this->readBuffer.append(this->s->readAll());
-    D("In read: readbuffer size:"<<this->readBuffer.size());
+//    D("In read: readbuffer size:"<<this->readBuffer.size());
 
     if (this->readBuffer.contains("\r\n")) {
         QPair<QString,QString> line = readLine();
@@ -187,6 +211,7 @@ void CuteboarddClient::handleReadyRead()
             if (value=="0/0 OK") {
                 D("Connected.");
                 this->connected = true;
+                this->pingTimer.start(60000); // Ping the server every 60 seconds
                 this->crypto.setKey(this->password.toUtf8());
                 this->password="";
             } else {
