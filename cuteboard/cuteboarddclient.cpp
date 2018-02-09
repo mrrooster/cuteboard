@@ -13,6 +13,14 @@
 #define D(a)
 #endif
 
+#define CLIENT_INFO "Cuteboard/180207"
+#ifdef Q_OS_MACOS
+#define CLIENT_OS "darwin"
+#elif defined Q_OS_WIN
+#define CLIENT_OS "winnt"
+#else
+#endif
+
 CuteboarddClient::CuteboarddClient(QObject *parent) : QObject(parent),s(nullptr),connected(false)
 {
     QObject::connect(&this->pingTimer,&QTimer::timeout,this,&CuteboarddClient::handlePingTimeout);
@@ -158,6 +166,7 @@ void CuteboarddClient::handleConnected()
     D("In handleConnected, sending procol strings...");
     write("CB 1.0");//Protocol version
     write(QString("User: %1").arg(this->user));// User
+    write(QString("Client: %1 (%2)").arg(CLIENT_INFO).arg(CLIENT_OS)); // Client info
     //this->pingTimer.start();
 }
 

@@ -22,13 +22,15 @@ SOURCES += main.cpp \
     cuteboarddclient.cpp \
     crypt.cpp \
     external/twofish/TWOFISH2.C \
-    settingsdialog.cpp
+    settingsdialog.cpp \
+    previewwidget.cpp
 
 HEADERS += \
     cuteboard.h \
     cuteboarddclient.h \
     crypt.h \
-    settingsdialog.h
+    settingsdialog.h \
+    previewwidget.h
 
 RESOURCES += \
     resources/resources.qrc

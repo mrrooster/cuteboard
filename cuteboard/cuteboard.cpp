@@ -5,6 +5,9 @@
 #include <QDebug>
 #include <QPointer>
 #include <QSettings>
+#include <QLabel>
+#include <QHBoxLayout>
+#include "previewwidget.h"
 
 #define DEBUG_CUTEBOARD
 #ifdef DEBUG_CUTEBOARD
@@ -19,7 +22,8 @@ Cuteboard::Cuteboard(QObject *parent) :
     QObject(parent),
     trayIcon(QIcon(":/trayicon.png")),
     historyMaxItems(40),
-    ignoreChanges(false)
+    ignoreChanges(false),
+    hoverWidget(0)
 {
     this->clipboard = QApplication::clipboard();
 
@@ -29,6 +33,10 @@ Cuteboard::Cuteboard(QObject *parent) :
     // FIXME connect to server
     //this->client.connect("tsunami.ohmyno.co.uk",19780,"me","mypassword");
     connect(&this->settings,&SettingsDialog::settingsChanged,this,&Cuteboard::handleSettingsChanged);
+
+    // Hover time
+    connect(&this->hoverTimer,&QTimer::timeout,this,&Cuteboard::handleHoverTimeout);
+    this->hoverTimer.setSingleShot(true);
 
     // Clipboard
     connect(this->clipboard,&QClipboard::dataChanged,this,&Cuteboard::handleClipboardContentsChanged);
@@ -62,11 +70,11 @@ void Cuteboard::saveClipboard()
 #ifdef Q_OS_MACOS
     setCheckString();
 #endif
-    this->history.append(data);
+    this->history.prepend(data);
 
     this->clipboardMenu.clear(); // To ensure we don't have any stale pointers around.
     while(this->history.size()>this->historyMaxItems) {
-        delete this->history.takeFirst();
+        delete this->history.takeLast();
     }
 
     D("History has"<<this->history.size()<<"entries.");
@@ -95,6 +103,7 @@ void Cuteboard::setupClipboardMenu()
 
         menuAct->setData(QVariant::fromValue(QPointer<QMimeData>(data)));
         connect(menuAct,&QAction::triggered,this,&Cuteboard::handleMenuSelected);
+        connect(menuAct,&QAction::hovered,this,&Cuteboard::handleMenuActionHover);
     }
 }
 
@@ -112,6 +121,14 @@ QMimeData *Cuteboard::cloneMimeData(const QMimeData *src)
         }
     }
     return data;
+}
+
+QWidget *Cuteboard::createHoverWidget()
+{
+    QPoint currentPos = QCursor::pos();
+    QWidget *w = new PreviewWidget(this->hoverData);
+    w->move(currentPos.x()-w->width()-10,currentPos.y()-w->height()-10);
+    return w;
 }
 
 void Cuteboard::handleSettingsChanged()
@@ -167,6 +184,48 @@ void Cuteboard::handleRemoteClipboard()
     this->ignoreChanges = false;
     D("Leaving handle remote clipboard.");
 }
+
+void Cuteboard::handleMenuActionHover()
+{
+    QAction *act = qobject_cast<QAction*>(sender());
+    QPointer<QMimeData> data = act->data().value<QPointer<QMimeData>>();
+
+    if (data) {
+
+            QPoint currentPos = QCursor::pos();
+            if (currentPos!=this->lastCursorPos) {
+                this->lastCursorPos = currentPos;
+                if (this->hoverWidget) {
+                    this->hoverWidget->close();
+                    this->hoverWidget->deleteLater();
+                    this->hoverWidget = 0;
+                }
+                this->hoverTimer.start(1000);
+                this->hoverData = data;
+            }
+            //this->trayIcon.showMessage("Cuteboard",data->text());
+    }
+
+}
+
+void Cuteboard::handleHoverTimeout()
+{
+    QPoint currentPos = QCursor::pos();
+    if (currentPos==this->lastCursorPos) {
+        if (!this->hoverWidget) {
+            this->hoverWidget=createHoverWidget();
+            this->hoverWidget->setVisible(true);
+        }
+        this->hoverTimer.start(200);
+    } else {
+        if (this->hoverWidget) {
+            this->hoverWidget->close();
+            this->hoverWidget->deleteLater();
+            this->hoverWidget=nullptr;
+        }
+    }
+}
+
 #ifdef Q_OS_MACOS
 
 void Cuteboard::checkForChanges()
