@@ -56,6 +56,7 @@ private slots:
     void handleRemoteClipboard();
     void handleMenuActionHover();
     void handleHoverTimeout();
+    void handleTrayActivation(QSystemTrayIcon::ActivationReason reason);
 #ifdef Q_OS_MACOS
     void checkForChanges();
 #endif

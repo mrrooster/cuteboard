@@ -33,6 +33,7 @@ private:
     QUuid connectionId;
     QUuid challenge;
     QByteArray readBuffer;
+    int maxBufferSize; // Disconnect if exceeded
     static QMap<QString,UserState*> userMap;
 
     void setState(ConnectionState newState);

@@ -16,7 +16,8 @@ CuteboardConnection::CuteboardConnection(QTcpSocket *socket, QObject *parent) :
     challenge(QUuid::createUuid()),
     connectionId(QUuid::createUuid()),
     user(""),
-    client("")
+    client(""),
+    maxBufferSize(1024*1024*5)
 {
     D("Got incoming connection.");
     this->s = socket;
@@ -129,6 +130,12 @@ void CuteboardConnection::handleWatchdogTimeout()
 void CuteboardConnection::handleReadyToRead()
 {
     this->readBuffer.append(this->s->readAll());
+D("Read buffer: "<<this->readBuffer.size()<<", MB:"<<(this->readBuffer.size()/1024/1024));
+    if (this->readBuffer.size()>this->maxBufferSize) {
+        D("Connection input buffer max size exceeded");
+        this->readBuffer.clear();
+        close();
+    }
 
     while (this->readBuffer.contains("\r\n")) {
         QPair<QString,QString> line = readLine();

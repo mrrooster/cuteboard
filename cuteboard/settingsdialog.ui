@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>271</width>
-    <height>134</height>
+    <height>149</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,7 +20,7 @@
    <item>
     <widget class="QCheckBox" name="localOnly">
      <property name="text">
-      <string>Don't connect to a server</string>
+      <string>Connect to a remote sharing server</string>
      </property>
     </widget>
    </item>
@@ -42,7 +42,7 @@
      <item row="1" column="0">
       <widget class="QLabel" name="label_2">
        <property name="text">
-        <string>Password:</string>
+        <string>Passphrase:</string>
        </property>
       </widget>
      </item>
@@ -70,6 +70,19 @@
     </layout>
    </item>
    <item>
+    <widget class="QLabel" name="label_4">
+     <property name="text">
+      <string>Use the same user and passphrase on multiple machines to share clipboards between them. (The passphrase is stored in plaintext!)</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -84,98 +97,18 @@
  <resources/>
  <connections>
   <connection>
-   <sender>buttonBox</sender>
-   <signal>accepted()</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>227</x>
-     <y>112</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>157</x>
-     <y>127</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>buttonBox</sender>
-   <signal>rejected()</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>261</x>
-     <y>124</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>270</x>
-     <y>127</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>localOnly</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>user</receiver>
-   <slot>setDisabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>85</x>
-     <y>22</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>106</x>
-     <y>42</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>localOnly</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>pass</receiver>
-   <slot>setDisabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>158</x>
-     <y>16</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>168</x>
-     <y>67</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>localOnly</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>host</receiver>
-   <slot>setDisabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>197</x>
-     <y>14</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>173</x>
-     <y>80</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>localOnly</sender>
    <signal>clicked(bool)</signal>
    <receiver>label</receiver>
-   <slot>setDisabled(bool)</slot>
+   <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>58</x>
-     <y>21</y>
+     <x>67</x>
+     <y>24</y>
     </hint>
     <hint type="destinationlabel">
-     <x>28</x>
-     <y>44</y>
+     <x>17</x>
+     <y>45</y>
     </hint>
    </hints>
   </connection>
@@ -183,15 +116,15 @@
    <sender>localOnly</sender>
    <signal>clicked(bool)</signal>
    <receiver>label_2</receiver>
-   <slot>setDisabled(bool)</slot>
+   <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>74</x>
-     <y>17</y>
+     <x>126</x>
+     <y>20</y>
     </hint>
     <hint type="destinationlabel">
-     <x>35</x>
-     <y>61</y>
+     <x>43</x>
+     <y>72</y>
     </hint>
    </hints>
   </connection>
@@ -199,31 +132,79 @@
    <sender>localOnly</sender>
    <signal>clicked(bool)</signal>
    <receiver>label_3</receiver>
-   <slot>setDisabled(bool)</slot>
+   <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>30</x>
-     <y>20</y>
+     <x>159</x>
+     <y>17</y>
     </hint>
     <hint type="destinationlabel">
-     <x>28</x>
-     <y>90</y>
+     <x>32</x>
+     <y>87</y>
     </hint>
    </hints>
   </connection>
   <connection>
-   <sender>buttonBox</sender>
-   <signal>clicked(QAbstractButton*)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>close()</slot>
+   <sender>localOnly</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>user</receiver>
+   <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>189</x>
-     <y>107</y>
+     <x>90</x>
+     <y>15</y>
     </hint>
     <hint type="destinationlabel">
-     <x>279</x>
-     <y>18</y>
+     <x>91</x>
+     <y>35</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>localOnly</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>user</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>192</x>
+     <y>25</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>189</x>
+     <y>37</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>localOnly</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>pass</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>219</x>
+     <y>13</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>204</x>
+     <y>68</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>localOnly</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>host</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>231</x>
+     <y>21</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>142</x>
+     <y>98</y>
     </hint>
    </hints>
   </connection>

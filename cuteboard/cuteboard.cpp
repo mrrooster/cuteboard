@@ -27,8 +27,6 @@ Cuteboard::Cuteboard(QObject *parent) :
 {
     this->clipboard = QApplication::clipboard();
 
-    this->trayIcon.setContextMenu(&this->menu);
-
     connect(&this->client,&CuteboarddClient::hasRemoteClipboard,this,&Cuteboard::handleRemoteClipboard);
     // FIXME connect to server
     //this->client.connect("tsunami.ohmyno.co.uk",19780,"me","mypassword");
@@ -47,6 +45,10 @@ Cuteboard::Cuteboard(QObject *parent) :
     this->menu.addSeparator();
     connect(this->menu.addAction("Settings"),&QAction::triggered,&this->settings,&SettingsDialog::open);
     connect(this->menu.addAction("Quit"),&QAction::triggered,this,&Cuteboard::handleMenuQuit);
+
+    //tray icon
+    connect(&this->trayIcon,&QSystemTrayIcon::activated,this,&Cuteboard::handleTrayActivation);
+    this->trayIcon.setContextMenu(&this->menu);
 
 #ifdef Q_OS_MACOS
     connect(&this->checkForChangesTimer,&QTimer::timeout,this,&Cuteboard::checkForChanges);
@@ -223,6 +225,13 @@ void Cuteboard::handleHoverTimeout()
             this->hoverWidget->deleteLater();
             this->hoverWidget=nullptr;
         }
+    }
+}
+
+void Cuteboard::handleTrayActivation(QSystemTrayIcon::ActivationReason reason)
+{
+    if (reason==QSystemTrayIcon::Trigger) {
+        this->clipboardMenu.popup(QCursor::pos(),this->clipboardMenu.actions().last());
     }
 }
 
