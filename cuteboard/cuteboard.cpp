@@ -23,7 +23,9 @@ Cuteboard::Cuteboard(QObject *parent) :
     trayIcon(QIcon(":/trayicon.png")),
     historyMaxItems(40),
     ignoreChanges(false),
-    hoverWidget(0)
+    hoverWidget(0),
+    retryMSecs(100),
+    retryMaxMSecs(300000)
 {
     this->clipboard = QApplication::clipboard();
 
@@ -31,6 +33,12 @@ Cuteboard::Cuteboard(QObject *parent) :
     // FIXME connect to server
     //this->client.connect("tsunami.ohmyno.co.uk",19780,"me","mypassword");
     connect(&this->settings,&SettingsDialog::settingsChanged,this,&Cuteboard::handleSettingsChanged);
+
+    // Server disconnect/reconnect
+    connect(&this->client,&CuteboarddClient::connected,this,&Cuteboard::handleConnected);
+    connect(&this->client,&CuteboarddClient::disconnected,this,&Cuteboard::handleDisconnect);
+    connect(&this->reconnectTimer,&QTimer::timeout,this,&Cuteboard::handleReconnectTimerTimeout);
+    this->reconnectTimer.setSingleShot(true);
 
     // Hover time
     connect(&this->hoverTimer,&QTimer::timeout,this,&Cuteboard::handleHoverTimeout);
@@ -100,7 +108,7 @@ void Cuteboard::setupClipboardMenu()
                              );
             menuAct->setIcon(QIcon(QPixmap::fromImage(image.scaledToWidth(256))));
         } else {
-            menuAct->setText(data->text().remove('\n').left(30));
+            menuAct->setText(QString("%1").arg(data->text().remove('\n').left(30)));
         }
 
         menuAct->setData(QVariant::fromValue(QPointer<QMimeData>(data)));
@@ -133,20 +141,26 @@ QWidget *Cuteboard::createHoverWidget()
     return w;
 }
 
-void Cuteboard::handleSettingsChanged()
+void Cuteboard::connectToServer()
 {
     QSettings settings;
-    this->client.close();
+
+    this->reconnectTimer.stop();
     if (!(settings.value("localOnly",QVariant(true)).toBool())) {
         QString host = settings.value("host",QVariant("")).toString();
-        ushort port = 19780;
-        D("Connecting to server: "<<host<<port);
+        D("Connecting to server: "<<host);
         this->client.connect(host,
-                             port,
                              settings.value("user",QVariant("")).toString(),
                              settings.value("pass",QVariant("")).toString()
                              );
     }
+}
+
+void Cuteboard::handleSettingsChanged()
+{
+    this->client.close();
+    this->trayIcon.setIcon(QIcon(":/trayicon.png"));
+    connectToServer();
 }
 
 void Cuteboard::handleMenuQuit()
@@ -161,16 +175,22 @@ void Cuteboard::handleMenuSelected()
 
     if (data) {
         //this->trayIcon.showMessage("Cuteboard",data->text());
+        this->ignoreChanges = true;
         this->clipboard->setMimeData(cloneMimeData(data));
+#ifdef Q_OS_MACOS
+        setCheckString();
+#endif
+        QApplication::processEvents();
+        this->ignoreChanges = false;
     }
 }
 
 void Cuteboard::handleClipboardContentsChanged()
 {
-    saveClipboard();
     if (this->ignoreChanges) {
         return;
     }
+    saveClipboard();
     this->client.postClipboard(this->clipboard->mimeData());
 }
 
@@ -183,6 +203,7 @@ void Cuteboard::handleRemoteClipboard()
     setCheckString();
 #endif
     QApplication::processEvents();
+    saveClipboard();
     this->ignoreChanges = false;
     D("Leaving handle remote clipboard.");
 }
@@ -233,6 +254,27 @@ void Cuteboard::handleTrayActivation(QSystemTrayIcon::ActivationReason reason)
     if (reason==QSystemTrayIcon::Trigger) {
         this->clipboardMenu.popup(QCursor::pos(),this->clipboardMenu.actions().last());
     }
+}
+
+void Cuteboard::handleReconnectTimerTimeout()
+{
+    connectToServer();
+}
+
+void Cuteboard::handleDisconnect()
+{
+    D("Retrying in"<<this->retryMSecs<<"ms");
+    this->trayIcon.setIcon(QIcon(":/trayicon_disconnected.png"));
+    this->reconnectTimer.start(this->retryMSecs);
+    this->retryMSecs *= 2;
+    if (this->retryMSecs > this->retryMaxMSecs) {
+        this->retryMSecs = this->retryMaxMSecs;
+    }
+}
+
+void Cuteboard::handleConnected()
+{
+    this->trayIcon.setIcon(QIcon(":/trayicon_connected.png"));
 }
 
 #ifdef Q_OS_MACOS

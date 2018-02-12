@@ -25,6 +25,8 @@ public slots:
 
 private:
     int historyMaxItems;
+    int retryMSecs;
+    int retryMaxMSecs;
     QSystemTrayIcon trayIcon;
     QMenu menu;
     QMenu clipboardMenu;
@@ -37,6 +39,7 @@ private:
     QMimeData *hoverData;
     QTimer hoverTimer;
     QWidget *hoverWidget;
+    QTimer reconnectTimer;
 #ifdef Q_OS_MACOS
     QTimer checkForChangesTimer;
     QString checkString;
@@ -47,6 +50,7 @@ private:
     void setupClipboardMenu();
     QMimeData *cloneMimeData(const QMimeData *src);
     QWidget *createHoverWidget();
+    void connectToServer();
 
 private slots:
     void handleSettingsChanged();
@@ -57,6 +61,9 @@ private slots:
     void handleMenuActionHover();
     void handleHoverTimeout();
     void handleTrayActivation(QSystemTrayIcon::ActivationReason reason);
+    void handleReconnectTimerTimeout();
+    void handleDisconnect();
+    void handleConnected();
 #ifdef Q_OS_MACOS
     void checkForChanges();
 #endif

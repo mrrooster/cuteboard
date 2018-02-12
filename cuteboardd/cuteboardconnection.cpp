@@ -17,7 +17,7 @@ CuteboardConnection::CuteboardConnection(QTcpSocket *socket, QObject *parent) :
     connectionId(QUuid::createUuid()),
     user(""),
     client(""),
-    maxBufferSize(1024*1024*5)
+    maxBufferSize(1024*1024*80)
 {
     D("Got incoming connection.");
     this->s = socket;

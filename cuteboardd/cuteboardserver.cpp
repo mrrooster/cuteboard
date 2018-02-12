@@ -8,18 +8,32 @@
 #define D(a)
 #endif
 
-CuteboardServer::CuteboardServer(QObject *parent) : QObject(parent)
+CuteboardServer::CuteboardServer(QObject *parent) : QObject(parent),hostAddress(""),port(19780)
 {
-    D("Cuteboard server starting.");
     this->server = new QTcpServer(this);
 
     connect(this->server,&QTcpServer::newConnection,this,&CuteboardServer::handleIncommingConnection);
 }
 
+void CuteboardServer::setListenAddress(QString address)
+{
+    this->hostAddress = address;
+}
+
+void CuteboardServer::setListenPort(quint16 port)
+{
+    this->port = port;
+}
+
 void CuteboardServer::commence()
 {
-    this->server->listen(QHostAddress::Any,19780);
-    D("Server listening on port:"<<this->server->serverPort()<<this->server->isListening());
+    D("Cuteboard server starting.");
+    QHostAddress address(this->hostAddress);
+    if (this->hostAddress.isEmpty()) {
+        address = QHostAddress::Any;
+    }
+    this->server->listen(address,this->port);
+    D("Server listening on:"<<QString("%1:%2").arg(this->server->serverAddress().toString()).arg(this->server->serverPort())<<", is listening:"<<this->server->isListening());
 }
 
 void CuteboardServer::handleIncommingConnection()

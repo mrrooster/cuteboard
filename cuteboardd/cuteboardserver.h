@@ -11,6 +11,8 @@ class CuteboardServer : public QObject
 public:
     explicit CuteboardServer(QObject *parent = nullptr);
 
+    void setListenAddress(QString address);
+    void setListenPort(quint16 port);
 signals:
 
 public slots:
@@ -19,6 +21,8 @@ public slots:
 private:
     QTcpServer *server;
     QVector<CuteboardConnection*> connections;
+    QString hostAddress;
+    quint16 port;
 
 private slots:
     void handleIncommingConnection();

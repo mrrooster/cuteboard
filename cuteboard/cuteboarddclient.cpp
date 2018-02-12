@@ -21,15 +21,30 @@
 #else
 #endif
 
-CuteboarddClient::CuteboarddClient(QObject *parent) : QObject(parent),s(nullptr),connected(false)
+CuteboarddClient::CuteboarddClient(QObject *parent) : QObject(parent),s(nullptr),amConnected(false)
 {
     QObject::connect(&this->pingTimer,&QTimer::timeout,this,&CuteboarddClient::handlePingTimeout);
     this->pingTimer.setSingleShot(false);
 }
 
+void CuteboarddClient::connect(QString host, QString user, QString password)
+{
+    quint16 port = 19780;
+    if (host.contains(':')) {
+        int idx = host.indexOf(':');
+        bool okay = true;
+        port = host.mid(idx+1).toUShort(&okay);
+        if (!okay) {
+            port = 19780;
+        }
+        host = host.left(idx);
+    }
+    connect(host,port,user,password);
+}
+
 void CuteboarddClient::connect(QString host, quint16 port,QString user,QString password)
 {
-    if (this->connected) {
+    if (this->amConnected) {
         return;
     }
     D("Connect to:"<<host<<port<<"as"<<user);
@@ -49,7 +64,7 @@ void CuteboarddClient::connect(QString host, quint16 port,QString user,QString p
 
 void CuteboarddClient::postClipboard(const QMimeData *data)
 {
-    if (this->connected) {
+    if (this->amConnected) {
         D("Preparing clipboard for transmission...");
         QByteArray dataToSend;
 
@@ -95,10 +110,10 @@ QMimeData *CuteboarddClient::getNextRemoteClipboard()
 
 void CuteboarddClient::close()
 {
-    if (this->connected) {
+    if (this->amConnected) {
         D("Closing connection.");
         this->s->close();
-        this->connected = false;
+        this->amConnected = false;
     }
 }
 
@@ -173,7 +188,7 @@ void CuteboarddClient::handleConnected()
 void CuteboarddClient::handleDisconnected()
 {
     D("Disconnected.");
-    this->connected = false;
+    this->amConnected = false;
     if (this->s) {
         this->s->close();
     }
@@ -183,7 +198,7 @@ void CuteboarddClient::handleDisconnected()
 void CuteboarddClient::handleError(QAbstractSocket::SocketError socketError)
 {
     D("An error occured:"<<this->s->errorString());
-    this->connected = false;
+    this->amConnected = false;
     if (this->s) {
         this->s->close();
     }
@@ -192,7 +207,7 @@ void CuteboarddClient::handleError(QAbstractSocket::SocketError socketError)
 
 void CuteboarddClient::handlePingTimeout()
 {
-    if (!this->connected) {
+    if (!this->amConnected) {
         this->pingTimer.stop();
     } else {
         D("Sending ping...");
@@ -227,12 +242,13 @@ void CuteboarddClient::handleReadyRead()
         } else if (command=="Error") {
             if (value=="0/0 OK") {
                 D("Connected.");
-                this->connected = true;
+                this->amConnected = true;
                 this->pingTimer.start(60000); // Ping the server every 60 seconds
                 this->crypto.setKey(this->password.toUtf8());
                 this->password="";
+                emit connected();
             } else {
-                this->connected = false;
+                this->amConnected = false;
                 this->error = value;
             }
         }

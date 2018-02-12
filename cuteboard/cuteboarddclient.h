@@ -13,6 +13,7 @@ class CuteboarddClient : public QObject
 public:
     explicit CuteboarddClient(QObject *parent = nullptr);
 
+    void connect(QString host, QString user, QString password);
     void connect(QString host, quint16 port, QString user, QString password);
     void postClipboard(const QMimeData *data);
     QByteArray encodeMimeData(const QMimeData *data);
@@ -21,6 +22,7 @@ public:
 signals:
     void hasRemoteClipboard();
     void disconnected();
+    void connected();
 public slots:
 
 private:
@@ -30,7 +32,7 @@ private:
     QString password;
     QAbstractSocket *s;
     QTimer pingTimer;
-    bool connected;
+    bool amConnected;
     QString error;
     Crypt crypto;
     QByteArray readBuffer;

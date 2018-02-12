@@ -1,5 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>trayicon.png</file>
+        <file>trayicon_connected.png</file>
+        <file>trayicon_disconnected.png</file>
     </qresource>
 </RCC>
