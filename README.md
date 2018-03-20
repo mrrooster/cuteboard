@@ -18,7 +18,7 @@ Cuteboardd is the server process for the cuteboard protocol, it takes incoming c
 
 ### The cuteboard protocol
 
-The cuteboard protocol is a very simple line based protocol. Lines are seperated by <<CR>>-<<LF>>. Apart from the initial header all lines take the form:
+The cuteboard protocol is a very simple line based protocol. Lines are seperated by \r\n. Apart from the initial header all lines take the form:
 ```
 <command name>: <command value>
 ```
